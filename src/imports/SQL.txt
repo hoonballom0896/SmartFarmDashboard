@@ -1,0 +1,16 @@
+-- 1. settings 테이블 생성
+CREATE TABLE IF NOT EXISTS settings (
+    id INT PRIMARY KEY DEFAULT 1,
+    target_stage INT DEFAULT 2,          -- 청경채 성장 단계 (1~6)
+    led_brightness INT DEFAULT 80,       -- LED 밝기 (%)
+    target_temp NUMERIC DEFAULT 21.5,    -- 목표 온도 (°C)
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2. 기본 데이터 1건 삽입
+INSERT INTO settings (id, target_stage, led_brightness, target_temp)
+VALUES (1, 2, 80, 21.5)
+ON CONFLICT (id) DO NOTHING;
+
+-- 3. ★ 중요: Supabase Realtime 활성화 (테이블 변경을 앱으로 실시간 전송)
+ALTER PUBLICATION supabase_realtime ADD TABLE settings;

@@ -1,0 +1,10 @@
+{
+  "description": "Manage smart farming for bok choy and lettuce with real-time monitoring of environmental factors, customizable themes, and a diary for plant growth.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

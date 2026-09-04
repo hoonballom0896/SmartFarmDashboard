@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>GRO FARM - 웹 제어 센터</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; padding: 40px; display: flex; justify-content: center; }
+        .card { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 360px; }
+        h2 { text-align: center; color: #111827; margin-bottom: 25px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-weight: bold; margin-bottom: 8px; color: #374151; }
+        select, input { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
+        button { width: 100%; padding: 12px; background-color: #22c55e; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        button:hover { background-color: #16a34a; }
+        #status { text-align: center; margin-top: 15px; font-size: 13px; color: #6b7280; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>🌿 GRO FARM 제어</h2>
+    
+    <div class="form-group">
+        <label>🌱 성장 단계 선택</label>
+        <select id="stage">
+            <option value="1">1단계 (씨앗에서 싹이 돋는 중)</option>
+            <option value="2" selected>2단계 (아삭한 잎이 자라는 중)</option>
+            <option value="3">3단계 (줄기가 튼튼해지는 중)</option>
+            <option value="4">4단계 (풍성하게 자라는 중)</option>
+            <option value="5">5단계 (수확을 준비하는 중)</option>
+            <option value="6">6단계 (완숙되어 수확 가능)</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>💡 LED 밝기 (%)</label>
+        <input type="number" id="led" min="0" max="100" value="80">
+    </div>
+
+    <button onclick="updateSettings()">설정값 적용하기</button>
+    <div id="status">전송 준비 완료</div>
+</div>
+
+<script>
+    const SUPABASE_URL = "https://yvixqdmqvvlldhlzzqjr.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2aXhxZG1xdnZsbGRobHp6cWpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NTU5NjYsImV4cCI6MjA5NjQzMTk2Nn0.I7SYCMP5uBtl1buRY9o2Aw7cslgy2wmfpo7kutm2c58";
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    async function updateSettings() {
+        const stage = parseInt(document.getElementById('stage').value);
+        const led = parseInt(document.getElementById('led').value);
+        const statusEl = document.getElementById('status');
+
+        statusEl.innerText = "전송 중...";
+
+        const { error } = await supabase
+            .from('settings')
+            .update({ 
+                target_stage: stage, 
+                led_brightness: led,
+                updated_at: new Date()
+            })
+            .eq('id', 1);
+
+        if (error) {
+            statusEl.innerText = "❌ 저장 실패: " + error.message;
+            statusEl.style.color = "red";
+        } else {
+            statusEl.innerText = "✅ 앱으로 설정이 전송되었습니다!";
+            statusEl.style.color = "#22c55e";
+        }
+    }
+</script>
+</body>
+</html>
