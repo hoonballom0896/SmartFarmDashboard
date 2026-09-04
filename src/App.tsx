@@ -73,10 +73,36 @@ export default function App() {
     fetchFarmSettings().then((s) => {
       if (active && s) apply(s)
     })
-    const unsub = subscribeFarmSettings((s) => active && apply(s))
+
+    // Realtime is the primary channel; when it can't subscribe (table not in
+    // the publication or RLS blocks SELECT) we fall back to polling so the app
+    // still stays in sync.
+    let poll: ReturnType<typeof setInterval> | null = null
+    const startPolling = () => {
+      if (poll) return
+      poll = setInterval(() => {
+        fetchFarmSettings().then((s) => {
+          if (active && s) apply(s)
+        })
+      }, 4000)
+    }
+    const unsub = subscribeFarmSettings(
+      (s) => active && apply(s),
+      (ok) => {
+        if (!active) return
+        if (ok && poll) {
+          clearInterval(poll)
+          poll = null
+        } else if (!ok) {
+          startPolling()
+        }
+      },
+    )
+
     return () => {
       active = false
       unsub()
+      if (poll) clearInterval(poll)
     }
   }, [])
 

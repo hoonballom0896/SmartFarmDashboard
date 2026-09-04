@@ -47,6 +47,7 @@ export async function fetchFarmSettings(): Promise<Partial<FarmSettings> | null>
  */
 export function subscribeFarmSettings(
   onChange: (s: Partial<FarmSettings>) => void,
+  onStatus?: (ok: boolean) => void,
 ): () => void {
   if (!isSupabaseConfigured) return () => {}
   const channel = supabase
@@ -59,7 +60,13 @@ export function subscribeFarmSettings(
         if (row) onChange(row)
       },
     )
-    .subscribe()
+    .subscribe((status, err) => {
+      // Surface why realtime isn't delivering: SUBSCRIBED = OK,
+      // CHANNEL_ERROR/TIMED_OUT usually means the table is not in the
+      // supabase_realtime publication or RLS blocks the anon SELECT.
+      console.info('[farm realtime]', status, err ?? '')
+      onStatus?.(status === 'SUBSCRIBED')
+    })
   return () => {
     supabase.removeChannel(channel)
   }
@@ -68,10 +75,23 @@ export function subscribeFarmSettings(
 /** Push app-side changes back so the panel and app stay in sync. */
 export async function pushFarmSettings(patch: Partial<FarmSettings>): Promise<void> {
   if (!isSupabaseConfigured) return
-  await supabase
+  // upsert (not update) so a missing id=1 row is created instead of matching
+  // nothing. `.select()` returns the affected rows so we can detect RLS blocks.
+  const { data, error } = await supabase
     .from('settings')
-    .update({ ...patch, updated_at: new Date().toISOString() })
-    .eq('id', ROW_ID)
+    .upsert({ id: ROW_ID, ...patch, updated_at: new Date().toISOString() } as never, {
+      onConflict: 'id',
+    })
+    .select()
+  if (error) {
+    console.error('[farm push] 저장 실패:', error.message, error)
+  } else if (!data || data.length === 0) {
+    console.warn(
+      '[farm push] 0개 행이 바뀜 — RLS UPDATE/INSERT 정책이 없거나 권한이 막혀 있어요',
+    )
+  } else {
+    console.info('[farm push] 저장됨:', patch)
+  }
 }
 
 /** Convenience: push a single sensor dial's value to its column. */
