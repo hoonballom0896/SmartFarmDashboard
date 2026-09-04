@@ -14,6 +14,7 @@ import { useDiary } from './useDiary'
 import {
   fetchFarmSettings,
   pushFarmSettings,
+  pushSensor,
   subscribeFarmSettings,
   type FarmSettings,
 } from './lib/farmSettings'
@@ -52,12 +53,20 @@ export default function App() {
   // updates pushed by the external control panel.
   useEffect(() => {
     let active = true
-    const apply = (s: FarmSettings) => {
-      setStage(Math.min(MAX_STAGE, Math.max(1, Math.round(s.target_stage))))
+    const apply = (s: Partial<FarmSettings>) => {
+      if (s.target_stage != null) {
+        setStage(Math.min(MAX_STAGE, Math.max(1, Math.round(s.target_stage))))
+      }
+      if (s.plant === 'bokchoy' || s.plant === 'lettuce') setPlant(s.plant)
       setSensors((prev) => ({
         ...prev,
-        led: s.led_brightness ?? prev.led,
+        water: s.water_level ?? prev.water,
+        soil: s.soil_moisture ?? prev.soil,
+        light: s.light_lux ?? prev.light,
+        co2: s.co2_ppm ?? prev.co2,
         temp: s.target_temp ?? prev.temp,
+        humidity: s.humidity ?? prev.humidity,
+        led: s.led_brightness ?? prev.led,
       }))
       setLinked(true)
     }
@@ -80,11 +89,16 @@ export default function App() {
     })
   }
 
-  // Persist LED / temperature adjustments back to the farm when a dial closes.
+  // Persist whichever sensor was adjusted back to the farm when its dial closes.
   const closeSensor = () => {
-    if (activeSensor === 'led') pushFarmSettings({ led_brightness: Math.round(sensors.led) })
-    if (activeSensor === 'temp') pushFarmSettings({ target_temp: sensors.temp })
+    if (activeSensor) pushSensor(activeSensor, sensors[activeSensor])
     setActiveSensor(null)
+  }
+
+  // Sync the selected plant to Supabase when it changes in settings.
+  const changePlant = (p: PlantId) => {
+    setPlant(p)
+    pushFarmSettings({ plant: p })
   }
 
   return (
@@ -182,7 +196,7 @@ export default function App() {
           theme={theme}
           plant={plant}
           onTheme={setTheme}
-          onPlant={setPlant}
+          onPlant={changePlant}
           onHarvest={harvest}
           onClose={() => setSettingsOpen(false)}
         />
